@@ -19,13 +19,13 @@ apiRoutes.use(async (req, res, next) => {
     let checkUserId = false;
     if (!token) {
         return res.json({
-            "message": messageParser.noToken
+            "error": messageParser.noToken
         });
     }
 
     if (!userid) {
         return res.json({
-            "message": messageParser.userIdRequired
+            "error": messageParser.userIdRequired
         });
     }
 
@@ -33,15 +33,12 @@ apiRoutes.use(async (req, res, next) => {
         checkUserId = await userController.checkUserIsExistOrNot(userid)
 
     if (checkUserId) {
-        console.log("check")
         jwt.verify(token, process.env.MY_SECRET, (err, decoded) => {
             if (err) {
                 return res.json({
-                    "message": messageParser.invalidToken
+                    "error": messageParser.invalidToken
                 });
             } else {
-        console.log("decoded", decoded)
-
                 req.user = decoded._doc;
                 next();
             }
@@ -49,7 +46,7 @@ apiRoutes.use(async (req, res, next) => {
     }
     else {
         return res.json({
-            "message": messageParser.invalidUserId
+            "error": messageParser.invalidUserId
         });
     }
 });
@@ -58,11 +55,9 @@ router.use('/api', apiRoutes);
 
 /**---------------------- | User | ------------------ */
 // router.post('/signup', [validateMiddleWare(validateUser)], authController.signup_post)
-router.post('/user', validateMiddleWare(validateUser), userController.createUser);
+router.post('/signUp', validateMiddleWare(validateUser), userController.signUp);
 router.get('/api/user', userController.listUser);
 router.put('/api/user', userController.updateUser);
 router.delete('/api/user', userController.deleteUser);
 router.get('/regenerateToken', userController.regenerateToken);
-
-
 module.exports = router;

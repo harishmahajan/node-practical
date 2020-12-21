@@ -1,9 +1,7 @@
 import { userModel } from '../model/userModel';
-
 import responseHelper from '../helper/responseHelper';
 import messageParser from '../helper/messageParser';
 import * as jwtGenerate from '../helper/jwtGenerateHelper';
-import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
@@ -12,19 +10,18 @@ let objectId = mongoose.Types.ObjectId;
 
 /**
  * CREATE USER
- * POST http://localhost:1930/api/user
+ * POST http://localhost:1858/signUp
  * {
-    "email": "harish.mahajan@atozinfoway.com",
-    "mobile": "9999988766",
+    "email": "hmahajan.dmi@gmail.com",
+    "mobile": "8000641661",
     "password": "admin123",
 }
  */
-exports.createUser = async (req, res, next) => {
+exports.signUp = async (req, res, next) => {
     try {
         let passwordHash = await bcrypt.hashSync(req.body.password, 8);
         let { email, mobile, addedDate = new Date().toUTCString() } = req.body;
-        let requestData = new userModel();
-        requestData = { email, mobile, password: passwordHash, addedDate };
+        let requestData = new userModel({ email, mobile, password: passwordHash, addedDate });
         let userData = await userModel.create(requestData);
         if (userData) {
             let tokenData = {
@@ -50,15 +47,12 @@ exports.createUser = async (req, res, next) => {
 
 /**
  * UPDATE USER 
- * PUT http://localhost:1930/api/user
+ * PUT http://localhost:1858/api/user
  * {
-    "_id": "5e984fa695b3190e843ee202",
-    "name": "Ankit Patel",
-    "email": "ankit.patel@atozinfoway.in",
-    "mobile": "9865741230",
-    "userTypeId": "5e69e0e9bf2d1e1cc4ce1498",
-    "updatedBy":"5e6b25b18dd3ca15d060f568",
-    "address": "Navsari"
+    "name": "harish",
+    "userid": "5fdda178528580052ce083ad",
+    "address": " surat",
+    "phoneNumber": "123345"
 }
  */
 exports.updateUser = async (req, res, next) => {
@@ -70,7 +64,7 @@ exports.updateUser = async (req, res, next) => {
                 let { name, address, phoneNumber, updatedDate = new Date().toUTCString() } = req.body;
                 let requestData = new userModel();
                 requestData = { name, address, updatedDate, phoneNumber };
-                let updatedData = await userModel.updateOne({ _id: req.body.userid }, { $set: requestData }, { upsert: true });
+                let updatedData = await userModel.updateOne({ _id: req.body.userid }, { $set: requestData });
                 if (updatedData.ok == 1) {
                     res.json(responseHelper.successResponse(200, messageParser.alertMessage['users'].updateSuccess, updatedData));
                 } else {
@@ -92,16 +86,8 @@ exports.updateUser = async (req, res, next) => {
  */
 exports.listUser = async (req, res, next) => {
     try {
-        let usersData = await userModel.aggregate([
-            {
-                $match: { $and: [{ isDeleted: false }] }
-            }
-        ]);
-        if (usersData) {
-            res.json(responseHelper.successResponse(200, messageParser.alertMessage['users'].listSuccess, usersData));
-        } else {
-            res.json(responseHelper.errorResponse(401, messageParser.alertMessage['users'].listError, []));
-        }
+        let usersData = await userModel.aggregate([{ $match: { $and: [{ isDeleted: false }] } }]);
+        (usersData) ? res.json(responseHelper.successResponse(200, messageParser.alertMessage['users'].listSuccess, usersData)) : res.json(responseHelper.errorResponse(401, messageParser.alertMessage['users'].listError, []));
     } catch (error) {
         res.json(responseHelper.errorResponse(401, messageParser.alertMessage['users'].listError, error.stack));
     }
@@ -110,18 +96,13 @@ exports.listUser = async (req, res, next) => {
 
 /**
  * DELETE USER
- * DELETE http://localhost:1930/api/user?userid=5e6b2abb8dd3ca15d060f56a&updatedBy=5e6b25b18dd3ca15d060f568
+ * DELETE http://localhost:1858/api/user?userid=5e6b2abb8dd3ca15d060f56a&updatedBy=5e6b25b18dd3ca15d060f568
  */
 exports.deleteUser = async (req, res) => {
     try {
         let userData = await userModel.findOne({ _id: req.query.userid });
         if (userData) {
-            let requestData = {
-                isDeleted: !userData.isDeleted,
-                updatedDate: new Date().toUTCString()
-            };
-
-            let updatedData = await userModel.updateOne({ _id: req.query.userid }, { $set: requestData }, { upsert: true });
+            let updatedData = await userModel.updateOne({ _id: req.query.userid }, { $set: { isDeleted: !userData.isDeleted, updatedDate: new Date().toUTCString() } }, { upsert: true });
             if (updatedData.ok == 1) {
                 res.json(responseHelper.successResponse(200, messageParser.alertMessage['users'].deleteSucces, updatedData));
             } else {
@@ -143,7 +124,11 @@ exports.checkUserIsExistOrNot = async (userid) => {
         return false;
 };
 
-exports.regenerateToken = async (req,res) => {
+/**
+ * REGENERATE TOKEN
+ * GET : http://localhost:1858/regenerateToken?userid=5fddf28e23014d2b847729ad
+ */
+exports.regenerateToken = async (req, res) => {
     if (mongoose.isValidObjectId(req.query.userid)) {
         let userData = await userModel.findOne({ _id: req.query.userid })
         if (userData) {
